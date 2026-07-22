@@ -62,7 +62,7 @@ jobs:
       - name: Build Release APK
         run: |
           echo "=== Building with Gradle ==="
-          gradle assembleRelease --no-daemon --stacktrace 2>&1 | tail -100
+          gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/build.log | grep -E "(e:|w:|FAILURE|ERROR|error:|FAILED|> Task)" | tail -50
           echo "=== Build complete ==="
           find app/build -name "*.apk" 2>/dev/null || echo "No APK found"
         env:
