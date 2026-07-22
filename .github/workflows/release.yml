@@ -63,15 +63,17 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Fix gradlew line endings
+        run: |
+          sed -i 's/\r$//' gradlew
+          hexdump -C gradlew | head -3
+          file gradlew
+
       - name: Build Release APK
         run: |
           echo "=== ANDROID_HOME: $ANDROID_HOME"
-          echo "=== Java version:"
-          java -version
-          echo "=== Gradle version:"
-          ./gradlew --version
           echo "=== Building..."
-          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -50
+          bash gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -80
           echo "=== Build complete, checking outputs ==="
           ls -la app/build/ 2>/dev/null || echo "No build dir"
           ls -la app/build/outputs/ 2>/dev/null || echo "No outputs dir"
