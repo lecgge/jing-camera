@@ -64,16 +64,20 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: |
+          echo "=== ANDROID_HOME: $ANDROID_HOME"
+          echo "=== Java version:"
+          java -version
+          echo "=== Gradle version:"
+          ./gradlew --version
+          echo "=== Building..."
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -50
+          echo "=== Build complete, checking outputs ==="
+          ls -la app/build/ 2>/dev/null || echo "No build dir"
+          ls -la app/build/outputs/ 2>/dev/null || echo "No outputs dir"
+          find app/build -name "*.apk" 2>/dev/null || echo "No APK found anywhere"
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
-
-      - name: List build outputs
-        run: |
-          echo "=== Build outputs ==="
-          find app/build/outputs -type f 2>/dev/null || echo "No outputs found"
-          echo "=== APK directory ==="
-          ls -la app/build/outputs/apk/ 2>/dev/null || echo "No apk dir"
 
       - name: Find and rename APK
         run: |
