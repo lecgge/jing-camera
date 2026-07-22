@@ -68,9 +68,11 @@ jobs:
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
 
-      - name: Rename APK
+      - name: Find and rename APK
         run: |
-          mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/jing-camera-release.apk
+          APK_PATH=$(find app/build/outputs/apk -name "*.apk" -type f | head -1)
+          echo "Found APK: $APK_PATH"
+          cp "$APK_PATH" app/build/outputs/apk/release/jing-camera-release.apk
 
       - name: Get current date
         id: date
