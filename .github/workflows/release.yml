@@ -62,7 +62,7 @@ jobs:
           ls -la release.keystore
           keytool -list -v -keystore release.keystore -storepass jing123456 -alias jing 2>&1 | head -10
 
-      - name: Build Release APK
+      - name: Build Release APK (unsigned)
         run: |
           echo "=== Building with Gradle ==="
           gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/build.log | grep -E "(e:|w:|FAILURE|ERROR|error:|FAILED|> Task)" | tail -50
@@ -71,12 +71,23 @@ jobs:
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
 
-      - name: Rename APK
+      - name: Sign APK
         run: |
-          APK_PATH=$(find app/build/outputs -name "*.apk" -type f | head -1)
-          echo "Found APK: $APK_PATH"
-          mkdir -p app/build/outputs/apk/release
-          cp "$APK_PATH" app/build/outputs/apk/release/jing-camera-release.apk
+          echo "=== Signing APK ==="
+          APK_PATH="app/build/outputs/apk/release/app-release-unsigned.apk"
+          if [ ! -f "$APK_PATH" ]; then
+            APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          fi
+          echo "APK path: $APK_PATH"
+          ${ANDROID_HOME}/build-tools/36.0.0/apksigner sign \
+            --ks release.keystore \
+            --ks-key-alias jing \
+            --ks-pass pass:jing123456 \
+            --key-pass pass:jing123456 \
+            --out app/build/outputs/apk/release/jing-camera-release.apk \
+            "$APK_PATH"
+          echo "=== Verify signature ==="
+          ${ANDROID_HOME}/build-tools/36.0.0/apksigner verify --verbose app/build/outputs/apk/release/jing-camera-release.apk
 
       - name: Get current date
         id: date
