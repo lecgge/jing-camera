@@ -69,11 +69,18 @@ jobs:
           hexdump -C gradlew | head -3
           file gradlew
 
+      - name: Check gradle wrapper
+        run: |
+          cat gradle/wrapper/gradle-wrapper.properties
+          ls -la gradle/wrapper/
+          file gradle/wrapper/gradle-wrapper.jar
+
       - name: Build Release APK
         run: |
           echo "=== ANDROID_HOME: $ANDROID_HOME"
           echo "=== Building..."
-          bash gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -80
+          bash gradlew assembleRelease --no-daemon --stacktrace || BUILD_EXIT=$?
+          echo "=== Build exit code: ${BUILD_EXIT:-0} ==="
           echo "=== Build complete, checking outputs ==="
           ls -la app/build/ 2>/dev/null || echo "No build dir"
           ls -la app/build/outputs/ 2>/dev/null || echo "No outputs dir"
