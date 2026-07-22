@@ -1,0 +1,38 @@
+# Built files
+build/
+.gradle/
+.idea/
+.kotlin/
+*.iml
+
+# Local configuration
+local.properties
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+build.log
+
+# APK
+*.apk
+*.aab
+
+# NDK
+.cxx/
+.externalNativeBuild/
+
+# Keystore files
+*.jks
+*.keystore
+
+# Codegraph
+.codegraph/
+
+# Omocode session data
+.omo/
+
+# Omocode session data
+.omo/
