@@ -68,10 +68,22 @@ jobs:
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
 
+      - name: List build outputs
+        run: |
+          echo "=== Build outputs ==="
+          find app/build/outputs -type f 2>/dev/null || echo "No outputs found"
+          echo "=== APK directory ==="
+          ls -la app/build/outputs/apk/ 2>/dev/null || echo "No apk dir"
+
       - name: Find and rename APK
         run: |
-          APK_PATH=$(find app/build/outputs/apk -name "*.apk" -type f | head -1)
+          APK_PATH=$(find app/build/outputs -name "*.apk" -type f | head -1)
           echo "Found APK: $APK_PATH"
+          if [ -z "$APK_PATH" ]; then
+            echo "ERROR: No APK found!"
+            exit 1
+          fi
+          mkdir -p app/build/outputs/apk/release
           cp "$APK_PATH" app/build/outputs/apk/release/jing-camera-release.apk
 
       - name: Get current date
