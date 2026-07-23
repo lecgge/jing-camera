@@ -240,12 +240,14 @@ fun CameraScreen() {
             }
         }
 
-        // Slide-up panel
+        // Slide-up panel (positioned above shutter area)
         AnimatedVisibility(
             visible = showSlideUp,
             enter = slideInVertically(initialOffsetY = { it }),
             exit = slideOutVertically(targetOffsetY = { it }),
-            modifier = Modifier.align(Alignment.BottomCenter)
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 180.dp)
         ) {
             SlideUpControls(
                 flashMode = flashMode,
