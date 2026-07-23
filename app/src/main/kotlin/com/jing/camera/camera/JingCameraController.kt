@@ -133,6 +133,21 @@ class JingCameraController(private val context: Context) {
     fun getCharacteristics(cameraId: String): CameraCharacteristics =
         cameraManager.getCameraCharacteristics(cameraId)
 
+    /**
+     * Switch between front and back cameras.
+     */
+    fun switchCamera(textureView: TextureView) {
+        val cameraIds = getCameraIds()
+        if (cameraIds.size < 2) return
+
+        val currentIndex = cameraIds.indexOf(cameraId)
+        val nextIndex = (currentIndex + 1) % cameraIds.size
+        val nextCameraId = cameraIds[nextIndex]
+
+        closeCamera()
+        openCamera(textureView, nextCameraId)
+    }
+
     fun openCamera(textureView: TextureView, cameraId: String) {
         this.textureView = textureView
         this.cameraId = cameraId

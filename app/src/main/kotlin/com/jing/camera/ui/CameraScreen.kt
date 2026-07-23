@@ -355,7 +355,7 @@ fun CameraScreen() {
 
                 // Camera switch
                 IconButton(
-                    onClick = { /* TODO: switch camera */ },
+                    onClick = { cameraController.switchCamera(textureView) },
                     modifier = Modifier.size(48.dp)
                 ) {
                     Icon(
