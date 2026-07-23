@@ -317,7 +317,13 @@ fun CameraScreen() {
                                 CameraMode.PHOTO -> cameraController.captureHdrPhoto()
                                 CameraMode.PORTRAIT -> cameraController.capturePortrait()
                                 CameraMode.NIGHT -> cameraController.captureNight()
-                                CameraMode.VIDEO -> { /* TODO */ }
+                                CameraMode.VIDEO -> {
+                                    if (cameraController.isRecordingVideo()) {
+                                        cameraController.stopVideoRecording()
+                                    } else {
+                                        cameraController.startVideoRecording()
+                                    }
+                                }
                             }
                         }
                     }

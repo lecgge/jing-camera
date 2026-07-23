@@ -535,6 +535,55 @@ class JingCameraController(private val context: Context) {
         }
     }
 
+    // Video recording state
+    private var videoRecorder: VideoRecorder? = null
+    private var isRecordingVideo = false
+    private var videoCaptureSession: android.hardware.camera2.CameraCaptureSession? = null
+
+    fun isRecordingVideo(): Boolean = isRecordingVideo
+
+    /**
+     * Start video recording.
+     */
+    fun startVideoRecording() {
+        val device = cameraDevice ?: return
+        val surface = previewSurface ?: return
+
+        if (isRecordingVideo) return
+
+        try {
+            videoRecorder = VideoRecorder(context).apply {
+                onVideoSaved = { file ->
+                    isRecordingVideo = false
+                    Log.d(TAG, "Video saved: ${file.absolutePath}")
+                }
+                onError = { error ->
+                    isRecordingVideo = false
+                    Log.e(TAG, "Video error: $error")
+                }
+            }
+
+            videoRecorder?.prepare(device, surface)
+            videoRecorder?.startRecording()
+            isRecordingVideo = true
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start video recording", e)
+            isRecordingVideo = false
+        }
+    }
+
+    /**
+     * Stop video recording.
+     */
+    fun stopVideoRecording() {
+        if (!isRecordingVideo) return
+        videoRecorder?.stopRecording()
+        videoRecorder?.release()
+        videoRecorder = null
+        isRecordingVideo = false
+    }
+
     fun setZoom(zoom: Float) {
         val chars = characteristics ?: return
         currentZoom = zoom.coerceIn(1f, maxZoom)
