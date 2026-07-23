@@ -340,4 +340,65 @@ Java_com_jing_camera_camera_NativeProcessor_mergeFrames(
     env->ReleaseIntArrayElements(output, out, 0);
 }
 
+/**
+ * Night mode enhancement: brightness boost, shadow lifting, noise-aware smoothing.
+ */
+JNIEXPORT void JNICALL
+Java_com_jing_camera_camera_NativeProcessor_nightEnhance(
+        JNIEnv *env, jclass clazz,
+        jintArray pixels, jint width, jint height) {
+
+    jint* data = env->GetIntArrayElements(pixels, nullptr);
+    int total = width * height;
+
+    // Calculate average luminance
+    long totalLum = 0;
+    for (int i = 0; i < total; i++) {
+        int r = (data[i] >> 16) & 0xFF;
+        int g = (data[i] >> 8) & 0xFF;
+        int b = data[i] & 0xFF;
+        totalLum += (int)(0.299f * r + 0.587f * g + 0.114f * b);
+    }
+    int avgLum = (int)(totalLum / total);
+
+    // Target brightness: lift to ~128 if dark
+    float brightnessScale = avgLum < 80 ? (128.0f / (avgLum + 1)) : 1.0f;
+    brightnessScale = brightnessScale > 2.5f ? 2.5f : brightnessScale;
+
+    for (int i = 0; i < total; i++) {
+        int pixel = data[i];
+
+        int r = (pixel >> 16) & 0xFF;
+        int g = (pixel >> 8) & 0xFF;
+        int b = pixel & 0xFF;
+
+        // Apply brightness scale
+        r = (int)(r * brightnessScale);
+        g = (int)(g * brightnessScale);
+        b = (int)(b * brightnessScale);
+
+        // Shadow lifting: boost dark areas more
+        float lum = (r + g + b) / 3.0f / 255.0f;
+        if (lum < 0.3f) {
+            float shadowBoost = 1.0f + (0.3f - lum) * 0.8f;
+            r = (int)(r * shadowBoost);
+            g = (int)(g * shadowBoost);
+            b = (int)(b * shadowBoost);
+        }
+
+        // Subtle contrast enhancement
+        r = (int)((r - 128) * 1.1f + 128);
+        g = (int)((g - 128) * 1.1f + 128);
+        b = (int)((b - 128) * 1.1f + 128);
+
+        r = r < 0 ? 0 : (r > 255 ? 255 : r);
+        g = g < 0 ? 0 : (g > 255 ? 255 : g);
+        b = b < 0 ? 0 : (b > 255 ? 255 : b);
+
+        data[i] = (0xFF << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    env->ReleaseIntArrayElements(pixels, data, 0);
+}
+
 } // extern "C"

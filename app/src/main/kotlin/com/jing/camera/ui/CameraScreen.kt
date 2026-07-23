@@ -316,7 +316,7 @@ fun CameraScreen() {
                             when (currentMode) {
                                 CameraMode.PHOTO -> cameraController.captureHdrPhoto()
                                 CameraMode.PORTRAIT -> cameraController.capturePortrait()
-                                CameraMode.NIGHT -> cameraController.captureHdrPhoto()
+                                CameraMode.NIGHT -> cameraController.captureNight()
                                 CameraMode.VIDEO -> { /* TODO */ }
                             }
                         }

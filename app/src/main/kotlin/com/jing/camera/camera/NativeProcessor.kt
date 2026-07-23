@@ -48,4 +48,9 @@ object NativeProcessor {
      * @param strength higher = more aggressive noise removal
      */
     external fun mergeFrames(frameArray: Array<IntArray>, output: IntArray, frameCount: Int, width: Int, height: Int, strength: Float)
+
+    /**
+     * Night mode enhancement: brightness boost, shadow lifting, contrast.
+     */
+    external fun nightEnhance(pixels: IntArray, width: Int, height: Int)
 }

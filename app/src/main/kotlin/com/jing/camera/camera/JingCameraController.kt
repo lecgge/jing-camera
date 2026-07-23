@@ -392,6 +392,76 @@ class JingCameraController(private val context: Context) {
     }
 
     /**
+     * Capture night mode photo with longer exposure and more frames.
+     */
+    fun captureNight() {
+        val device = cameraDevice ?: return
+        val yuvReader = yuvImageReader ?: return
+        val session = captureSession ?: return
+
+        try {
+            burstImages.clear()
+            isCapturingBurst = true
+
+            val captureBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
+                addTarget(yuvReader.surface)
+                set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+                set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+                // Longer exposure for night
+                set(CaptureRequest.SENSOR_EXPOSURE_TIME, 100000000L) // 100ms
+                set(CaptureRequest.SENSOR_SENSITIVITY, 1600) // ISO 1600
+            }
+
+            // Capture more frames for night mode
+            val nightFrames = 8
+            val requests = List(nightFrames) { captureBuilder.build() }
+            session.captureBurst(requests, object : CameraCaptureSession.CaptureCallback() {
+                override fun onCaptureCompleted(
+                    session: CameraCaptureSession,
+                    request: CaptureRequest,
+                    result: TotalCaptureResult
+                ) {}
+            }, backgroundHandler)
+
+            backgroundHandler.postDelayed({
+                processNightFrames()
+            }, 3000)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to capture night burst", e)
+            isCapturingBurst = false
+        }
+    }
+
+    private fun processNightFrames() {
+        isCapturingBurst = false
+        val frames = mutableListOf<Image>()
+        while (burstImages.isNotEmpty()) {
+            burstImages.poll()?.let { frames.add(it) }
+        }
+
+        if (frames.isEmpty()) {
+            Log.e(TAG, "No frames captured for night mode")
+            return
+        }
+
+        Log.d(TAG, "Processing ${frames.size} night frames")
+
+        Thread {
+            try {
+                val jpegBytes = NightPipeline.processBurst(frames)
+                onPhotoCapturedJpeg?.invoke(jpegBytes)
+            } catch (e: Exception) {
+                Log.e(TAG, "Night processing failed", e)
+                if (frames.isNotEmpty()) {
+                    val bytes = MediaStoreSaver.imageToByteArray(frames[0])
+                    onPhotoCapturedJpeg?.invoke(bytes)
+                }
+            }
+        }.start()
+    }
+
+    /**
      * Detect supported vendor extensions.
      */
     fun getSupportedExtensions(): List<Int> {
