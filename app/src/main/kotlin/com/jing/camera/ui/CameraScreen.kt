@@ -48,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -71,6 +72,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.jing.camera.camera.JingCameraController
 import com.jing.camera.camera.MediaStoreSaver
 import kotlinx.coroutines.launch
@@ -113,6 +116,30 @@ fun CameraScreen() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         hasPermission = permissions.all { it.value }
+    }
+
+    // Lifecycle handling: close camera on pause, reopen on resume
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    cameraController.closeCamera()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    if (hasPermission) {
+                        val cameraIds = cameraController.getCameraIds()
+                        if (cameraIds.isNotEmpty()) {
+                            cameraController.openCamera(textureView, cameraIds[0])
+                        }
+                    }
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     LaunchedEffect(Unit) {
