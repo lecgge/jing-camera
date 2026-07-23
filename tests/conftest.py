@@ -1,11 +1,16 @@
 """
 Appium test configuration and fixtures for "Jing" camera app.
 """
+import os
 import pytest
 import time
 import subprocess
 from appium import webdriver
 from appium.options.android import UiAutomator2Options
+
+# Set Android SDK path
+os.environ["ANDROID_HOME"] = r"D:\Program Files\Android\SDK"
+os.environ["ANDROID_SDK_ROOT"] = r"D:\Program Files\Android\SDK"
 
 
 # ─── Device Configuration ───────────────────────────────────────────────────

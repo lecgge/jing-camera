@@ -261,25 +261,31 @@ class JingCameraController(private val context: Context) {
                 addTarget(reader.surface)
                 set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
                 set(CaptureRequest.JPEG_ORIENTATION, getJpegOrientation())
-
-                when (flashMode) {
-                    FlashMode.OFF -> {
-                        set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
-                        set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF)
-                    }
-                    FlashMode.ON -> {
-                        set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH)
-                        set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_SINGLE)
-                    }
-                    FlashMode.AUTO -> {
-                        set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH)
-                    }
-                }
+                applyFlash(this)
             }
 
             session.capture(captureBuilder.build(), null, backgroundHandler)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to capture photo", e)
+        }
+    }
+
+    /**
+     * Apply current flash mode to a capture request builder.
+     */
+    private fun applyFlash(builder: CaptureRequest.Builder) {
+        when (flashMode) {
+            FlashMode.OFF -> {
+                builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+                builder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF)
+            }
+            FlashMode.ON -> {
+                builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH)
+                builder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_SINGLE)
+            }
+            FlashMode.AUTO -> {
+                builder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH)
+            }
         }
     }
 
@@ -351,6 +357,7 @@ class JingCameraController(private val context: Context) {
                 set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
                 // Underexpose slightly to preserve highlights
                 set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, -1)
+                applyFlash(this)
             }
 
             // Capture burst
@@ -424,6 +431,7 @@ class JingCameraController(private val context: Context) {
                 // Longer exposure for night
                 set(CaptureRequest.SENSOR_EXPOSURE_TIME, 100000000L) // 100ms
                 set(CaptureRequest.SENSOR_SENSITIVITY, 1600) // ISO 1600
+                applyFlash(this)
             }
 
             // Capture more frames for night mode

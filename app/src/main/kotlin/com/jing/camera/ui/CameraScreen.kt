@@ -1,9 +1,12 @@
 package com.jing.camera.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.view.TextureView
+import androidx.core.content.FileProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -56,7 +59,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -287,25 +292,14 @@ fun CameraScreen() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Thumbnail
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.DarkGray)
-                        .clickable {
-                            thumbnailUri?.let {
-                                // TODO: open in gallery
-                            }
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.PhotoLibrary,
-                        contentDescription = null,
-                        tint = if (thumbnailUri != null) Color.White else Color.White.copy(alpha = 0.5f),
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
+                ThumbnailView(
+                    uri = thumbnailUri,
+                    onClick = {
+                        thumbnailUri?.let { uri ->
+                            openInGallery(context, uri)
+                        }
+                    }
+                )
 
                 // Shutter button
                 ShutterButton(
@@ -604,14 +598,91 @@ fun ModeCarousel(
 }
 
 @Composable
+fun ThumbnailView(uri: Uri?, onClick: () -> Unit) {
+    val context = LocalContext.current
+
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.DarkGray)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        if (uri != null) {
+            // Load and display thumbnail
+            val bitmap = remember(uri) {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val bmp = BitmapFactory.decodeStream(inputStream)
+                    inputStream?.close()
+                    bmp
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "缩略图",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    Icons.Default.PhotoLibrary,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        } else {
+            Icon(
+                Icons.Default.PhotoLibrary,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.5f),
+                modifier = Modifier.size(32.dp)
+            )
+        }
+    }
+}
+
+fun openInGallery(context: android.content.Context, uri: Uri) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "image/*")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(intent)
+    } catch (e: Exception) {
+        // Fallback: try with FileProvider
+        try {
+            val fileProviderUri = androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                java.io.File(uri.path ?: return)
+            )
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(fileProviderUri, "image/*")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e2: Exception) {
+            android.util.Log.e("CameraScreen", "Failed to open gallery", e2)
+        }
+    }
+}
+
+@Composable
 fun ShutterButton(
     mode: CameraMode,
     capturing: Boolean,
     onShutterClick: () -> Unit
 ) {
-    var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.9f else 1f,
+        targetValue = if (capturing) 0.9f else 1f,
         animationSpec = tween(durationMillis = 100),
         label = "shutterScale"
     )
@@ -622,16 +693,7 @@ fun ShutterButton(
             .scale(scale)
             .clip(CircleShape)
             .background(Color.White)
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        tryAwaitRelease()
-                        isPressed = false
-                        onShutterClick()
-                    }
-                )
-            },
+            .clickable { onShutterClick() },
         contentAlignment = Alignment.Center
     ) {
         Box(

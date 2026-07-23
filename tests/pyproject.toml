@@ -1,0 +1,15 @@
+[project]
+name = "tests"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "appium-python-client>=4.0.0",
+    "pillow>=10.0.0",
+    "pytest>=8.0.0",
+    "pytest-html>=4.0.0",
+    "pytest-timeout>=2.3.0",
+    "selenium>=4.18.0",
+    "some-package>=0.1",
+]
