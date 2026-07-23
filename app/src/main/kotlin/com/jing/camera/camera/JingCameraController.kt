@@ -82,6 +82,8 @@ class JingCameraController(private val context: Context) {
     var flashMode: FlashMode = FlashMode.OFF
         private set
 
+    private var torchOn = false
+
     // Manual controls (Pro mode)
     var manualControls: ManualControls? = null
         private set
@@ -101,6 +103,28 @@ class JingCameraController(private val context: Context) {
             FlashMode.OFF -> FlashMode.ON
             FlashMode.ON -> FlashMode.AUTO
             FlashMode.AUTO -> FlashMode.OFF
+        }
+        updateTorchForFlashMode()
+    }
+
+    /**
+     * Turn torch ON immediately when flash mode is ON (always-on flashlight).
+     */
+    private fun updateTorchForFlashMode() {
+        if (flashMode == FlashMode.ON && !torchOn) {
+            try {
+                cameraManager.setTorchMode(cameraId, true)
+                torchOn = true
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to turn on torch", e)
+            }
+        } else if (flashMode != FlashMode.ON && torchOn) {
+            try {
+                cameraManager.setTorchMode(cameraId, false)
+                torchOn = false
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to turn off torch", e)
+            }
         }
     }
 
@@ -770,6 +794,14 @@ class JingCameraController(private val context: Context) {
         isCapturingBurst = false
         livePhotoRecorder?.release()
         livePhotoRecorder = null
+        if (torchOn) {
+            try {
+                cameraManager.setTorchMode(cameraId, false)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to turn off torch on close", e)
+            }
+            torchOn = false
+        }
     }
 
     fun release() {
