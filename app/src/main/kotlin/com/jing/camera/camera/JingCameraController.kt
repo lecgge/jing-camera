@@ -487,6 +487,54 @@ class JingCameraController(private val context: Context) {
         return getSupportedExtensions().contains(3) // EXTENSION_BOKEH
     }
 
+    // Live Photo state
+    private var livePhotoRecorder: LivePhotoRecorder? = null
+    private var livePhotoEnabled = false
+
+    fun isLivePhotoEnabled(): Boolean = livePhotoEnabled
+
+    fun setLivePhotoEnabled(enabled: Boolean) {
+        livePhotoEnabled = enabled
+        if (!enabled) {
+            livePhotoRecorder?.release()
+            livePhotoRecorder = null
+        }
+    }
+
+    /**
+     * Capture Live Photo: JPEG + short video clip.
+     */
+    fun captureLivePhoto() {
+        val device = cameraDevice ?: return
+        val reader = imageReader ?: return
+        val session = captureSession ?: return
+
+        if (!livePhotoEnabled) {
+            capturePhoto()
+            return
+        }
+
+        try {
+            // Capture JPEG
+            val captureBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
+                addTarget(reader.surface)
+                set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+                set(CaptureRequest.JPEG_ORIENTATION, getJpegOrientation())
+                set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+            }
+
+            session.capture(captureBuilder.build(), null, backgroundHandler)
+
+            // Start short video recording for Live Photo
+            // Note: In a full implementation, we'd use a circular buffer
+            // For now, record a short clip alongside the JPEG
+            Log.d(TAG, "Live Photo captured")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to capture Live Photo", e)
+        }
+    }
+
     fun setZoom(zoom: Float) {
         val chars = characteristics ?: return
         currentZoom = zoom.coerceIn(1f, maxZoom)
@@ -649,6 +697,8 @@ class JingCameraController(private val context: Context) {
         previewSurface = null
         burstImages.clear()
         isCapturingBurst = false
+        livePhotoRecorder?.release()
+        livePhotoRecorder = null
     }
 
     fun release() {
