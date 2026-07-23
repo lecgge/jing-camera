@@ -19,6 +19,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -392,7 +393,10 @@ fun TopControls(
             color = if (livePhotosEnabled) Color.White else Color.White.copy(alpha = 0.3f),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.clickable { onLivePhotosToggle() }
+                        modifier = Modifier.clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) { onLivePhotosToggle() }
         )
 
         // Timer
@@ -456,7 +460,10 @@ fun SlideUpControls(
             // Flash
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { onFlashToggle() }
+                modifier = Modifier.clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                ) { onFlashToggle() }
             ) {
                 Box(
                     modifier = Modifier
@@ -483,7 +490,10 @@ fun SlideUpControls(
             // Live Photos
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { onLivePhotosToggle() }
+                            modifier = Modifier.clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) { onLivePhotosToggle() }
             ) {
                 Box(
                     modifier = Modifier
@@ -506,7 +516,10 @@ fun SlideUpControls(
             // Timer
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { onTimerToggle() }
+                modifier = Modifier.clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                ) { onTimerToggle() }
             ) {
                 Box(
                     modifier = Modifier
@@ -529,7 +542,10 @@ fun SlideUpControls(
             // Aspect ratio (placeholder)
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { }
+                modifier = Modifier.clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                ) { }
             ) {
                 Box(
                     modifier = Modifier
@@ -584,7 +600,10 @@ fun ModeCarousel(
 
             Box(
                 modifier = Modifier
-                    .clickable { onModeSelected(mode) }
+                                            .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) { onModeSelected(mode) }
                     .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Text(
@@ -608,7 +627,10 @@ fun ThumbnailView(uri: Uri?, onClick: () -> Unit) {
             .size(48.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(Color.DarkGray)
-            .clickable { onClick() },
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() }
+            ) { onClick() },
         contentAlignment = Alignment.Center
     ) {
         if (uri != null) {
@@ -695,7 +717,10 @@ fun ShutterButton(
             .scale(scale)
             .clip(CircleShape)
             .background(Color.White)
-            .clickable { onShutterClick() },
+                            .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { onShutterClick() },
         contentAlignment = Alignment.Center
     ) {
         Box(
