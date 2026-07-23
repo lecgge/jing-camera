@@ -270,6 +270,56 @@ class JingCameraController(private val context: Context) {
     }
 
     /**
+     * Capture portrait photo with bokeh effect.
+     */
+    fun capturePortrait() {
+        val device = cameraDevice ?: return
+        val reader = imageReader ?: return
+        val session = captureSession ?: return
+
+        try {
+            val captureBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
+                addTarget(reader.surface)
+                set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+                set(CaptureRequest.JPEG_ORIENTATION, getJpegOrientation())
+                set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+            }
+
+            // Temporarily change onPhotoCaptured callback to process portrait
+            val originalCallback = onPhotoCaptured
+            onPhotoCaptured = { image ->
+                Thread {
+                    try {
+                        val jpegBytes = MediaStoreSaver.imageToByteArray(image)
+                        val result = PortraitProcessor.applyBokeh(jpegBytes, null, 12)
+                        onPhotoCapturedJpeg?.invoke(result)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Portrait processing failed", e)
+                        // Fallback: use original image
+                        val bytes = MediaStoreSaver.imageToByteArray(image)
+                        onPhotoCapturedJpeg?.invoke(bytes)
+                    }
+                }.start()
+            }
+
+            session.capture(captureBuilder.build(), object : CameraCaptureSession.CaptureCallback() {
+                override fun onCaptureCompleted(
+                    session: CameraCaptureSession,
+                    request: CaptureRequest,
+                    result: TotalCaptureResult
+                ) {
+                    // Restore original callback
+                    backgroundHandler.postDelayed({
+                        onPhotoCaptured = originalCallback
+                    }, 100)
+                }
+            }, backgroundHandler)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to capture portrait", e)
+        }
+    }
+
+    /**
      * Capture HDR photo using burst + merge pipeline.
      */
     fun captureHdrPhoto() {
