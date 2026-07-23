@@ -145,6 +145,14 @@ fun CameraScreen() {
                 capturing = false
             }
         }
+        cameraController.onPhotoCapturedJpeg = { jpegBytes ->
+            capturing = true
+            scope.launch {
+                val uri = MediaStoreSaver.saveJpeg(context, jpegBytes)
+                uri?.let { thumbnailUri = it }
+                capturing = false
+            }
+        }
         cameraController.onZoomChanged = { zoom ->
             zoomLevel = zoom
         }
@@ -305,7 +313,12 @@ fun CameraScreen() {
                     capturing = capturing,
                     onShutterClick = {
                         if (!capturing) {
-                            cameraController.capturePhoto()
+                            when (currentMode) {
+                                CameraMode.PHOTO -> cameraController.captureHdrPhoto()
+                                CameraMode.PORTRAIT -> cameraController.capturePhoto()
+                                CameraMode.NIGHT -> cameraController.captureHdrPhoto()
+                                CameraMode.VIDEO -> { /* TODO */ }
+                            }
                         }
                     }
                 )

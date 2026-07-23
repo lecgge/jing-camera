@@ -31,4 +31,21 @@ object NativeProcessor {
      * @param contrast 0.0-2.0, 1.0 = neutral
      */
     external fun colorAdjust(pixels: IntArray, width: Int, height: Int, saturation: Float, contrast: Float)
+
+    /**
+     * Align two frames using block matching.
+     * Returns motion vectors for each 8x8 block.
+     */
+    external fun alignFrames(reference: IntArray, toAlign: IntArray, width: Int, height: Int, motionVectors: FloatArray)
+
+    /**
+     * Warp a frame using motion vectors for alignment.
+     */
+    external fun warpFrame(src: IntArray, dst: IntArray, width: Int, height: Int, motionVectors: FloatArray)
+
+    /**
+     * Merge multiple aligned frames with temporal denoising.
+     * @param strength higher = more aggressive noise removal
+     */
+    external fun mergeFrames(frameArray: Array<IntArray>, output: IntArray, frameCount: Int, width: Int, height: Int, strength: Float)
 }

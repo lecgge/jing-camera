@@ -26,6 +26,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 import kotlin.math.max
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Core camera controller for "Jing" — TextureView-based Camera2 implementation.
@@ -67,7 +68,14 @@ class JingCameraController(private val context: Context) {
     private var textureView: TextureView? = null
 
     var onPhotoCaptured: ((Image) -> Unit)? = null
+    var onPhotoCapturedJpeg: ((ByteArray) -> Unit)? = null
     var onZoomChanged: ((Float) -> Unit)? = null
+
+    // HDR burst capture state
+    private val burstImages = ConcurrentLinkedQueue<Image>()
+    private var isCapturingBurst = false
+    private var yuvImageReader: ImageReader? = null
+    private val burstFrameCount = 6
 
     // Flash state
     enum class FlashMode { OFF, ON, AUTO }
@@ -170,6 +178,7 @@ class JingCameraController(private val context: Context) {
         val surface = previewSurface ?: return
 
         try {
+            // JPEG reader for normal capture
             imageReader = ImageReader.newInstance(
                 previewSize.width, previewSize.height,
                 ImageFormat.JPEG, MAX_IMAGES
@@ -180,6 +189,21 @@ class JingCameraController(private val context: Context) {
                 }, backgroundHandler)
             }
 
+            // YUV reader for HDR burst capture
+            yuvImageReader = ImageReader.newInstance(
+                previewSize.width, previewSize.height,
+                ImageFormat.YUV_420_888, burstFrameCount + 2
+            ).apply {
+                setOnImageAvailableListener({ reader ->
+                    val image = reader.acquireLatestImage() ?: return@setOnImageAvailableListener
+                    if (isCapturingBurst) {
+                        burstImages.offer(image)
+                    } else {
+                        image.close()
+                    }
+                }, backgroundHandler)
+            }
+
             previewRequestBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply {
                 addTarget(surface)
                 set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
@@ -187,6 +211,7 @@ class JingCameraController(private val context: Context) {
 
             val surfaces = mutableListOf(surface)
             imageReader?.surface?.let { surfaces.add(it) }
+            yuvImageReader?.surface?.let { surfaces.add(it) }
 
             createCaptureSession(device, surfaces) { session ->
                 try {
@@ -242,6 +267,104 @@ class JingCameraController(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to capture photo", e)
         }
+    }
+
+    /**
+     * Capture HDR photo using burst + merge pipeline.
+     */
+    fun captureHdrPhoto() {
+        val device = cameraDevice ?: return
+        val yuvReader = yuvImageReader ?: return
+        val session = captureSession ?: return
+
+        try {
+            burstImages.clear()
+            isCapturingBurst = true
+
+            val captureBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
+                addTarget(yuvReader.surface)
+                set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+                set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
+                // Underexpose slightly to preserve highlights
+                set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, -1)
+            }
+
+            // Capture burst
+            val requests = List(burstFrameCount) { captureBuilder.build() }
+            session.captureBurst(requests, object : CameraCaptureSession.CaptureCallback() {
+                override fun onCaptureCompleted(
+                    session: CameraCaptureSession,
+                    request: CaptureRequest,
+                    result: TotalCaptureResult
+                ) {
+                    // Collect results if needed
+                }
+            }, backgroundHandler)
+
+            // Process burst after a delay to allow all frames to arrive
+            backgroundHandler.postDelayed({
+                processBurstFrames()
+            }, 2000)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to capture HDR burst", e)
+            isCapturingBurst = false
+        }
+    }
+
+    private fun processBurstFrames() {
+        isCapturingBurst = false
+        val frames = mutableListOf<Image>()
+        while (burstImages.isNotEmpty()) {
+            burstImages.poll()?.let { frames.add(it) }
+        }
+
+        if (frames.isEmpty()) {
+            Log.e(TAG, "No frames captured for HDR")
+            return
+        }
+
+        Log.d(TAG, "Processing ${frames.size} HDR frames")
+
+        Thread {
+            try {
+                val jpegBytes = HdrPipeline.processBurst(frames)
+                onPhotoCapturedJpeg?.invoke(jpegBytes)
+            } catch (e: Exception) {
+                Log.e(TAG, "HDR processing failed", e)
+                // Fallback: return first frame as JPEG
+                if (frames.isNotEmpty()) {
+                    val bytes = MediaStoreSaver.imageToByteArray(frames[0])
+                    onPhotoCapturedJpeg?.invoke(bytes)
+                }
+            }
+        }.start()
+    }
+
+    /**
+     * Detect supported vendor extensions.
+     */
+    fun getSupportedExtensions(): List<Int> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return emptyList()
+        return try {
+            val extChars = cameraManager.getCameraExtensionCharacteristics(cameraId)
+            extChars.supportedExtensions
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get extensions", e)
+            emptyList()
+        }
+    }
+
+    fun isHdrSupported(): Boolean {
+        return getSupportedExtensions().contains(1) // EXTENSION_HDR
+    }
+
+    fun isNightSupported(): Boolean {
+        return getSupportedExtensions().contains(2) // EXTENSION_NIGHT
+    }
+
+    fun isBokehSupported(): Boolean {
+        return getSupportedExtensions().contains(3) // EXTENSION_BOKEH
     }
 
     fun setZoom(zoom: Float) {
@@ -401,7 +524,11 @@ class JingCameraController(private val context: Context) {
         cameraDevice = null
         imageReader?.close()
         imageReader = null
+        yuvImageReader?.close()
+        yuvImageReader = null
         previewSurface = null
+        burstImages.clear()
+        isCapturingBurst = false
     }
 
     fun release() {
