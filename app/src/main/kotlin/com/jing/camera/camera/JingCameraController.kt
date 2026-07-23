@@ -82,6 +82,20 @@ class JingCameraController(private val context: Context) {
     var flashMode: FlashMode = FlashMode.OFF
         private set
 
+    // Manual controls (Pro mode)
+    var manualControls: ManualControls? = null
+        private set
+
+    fun enableProMode(enabled: Boolean) {
+        if (enabled && manualControls == null && characteristics != null) {
+            manualControls = ManualControls(characteristics!!)
+        }
+        manualControls?.setManualMode(enabled)
+        updateRepeatingRequest()
+    }
+
+    fun isProModeEnabled(): Boolean = manualControls?.isManualMode == true
+
     fun nextFlashMode() {
         flashMode = when (flashMode) {
             FlashMode.OFF -> FlashMode.ON
